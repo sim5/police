@@ -1,409 +1,293 @@
-window.onload = function() {
+'use strict';
+
+
+var game = new Phaser.Game(800, 600, Phaser.CANVAS, 'game', {preload: preload, create: create, update: update});
+
+function preload() {
+
+game.load.audio('music',['assets/audio/calvin_harris_school.mp3']);
+game.load.audio('jump',['assets/audio/mario_jump.mp3']);
+game.load.image('city', 'assets/jail.jpg');
+game.load.image('street', 'assets/street.png');
+game.load.image('ground','assets/platform.png');    
+game.load.image('another-bg','assets/another_bg.png');    
+game.load.image('heart','assets/heart.png');
+game.load.spritesheet('dude', 'assets/dude.png', 32, 48);
+//game.load.spritesheet('cat', 'assets/Burgercat_main.png',32,40, 14);
+game.load.spritesheet('cat', 'assets/pol.png', 32,50 );
+game.load.spritesheet('baddie', 'assets/baddie.png', 32,32);
+
+}
+
+var player;
+var enemy;
+var keys = Phaser.Keyboard;
+var platforms;
+var cursors;
+var cats;
+var music;
+var jump;
+var world;
+var hearts;
+var enemy;
+var enemies;
+var scoreText;
+var score = 0;
+var levelExist = false;
+var isDead = false;
+var bgtile;
+
+function create(){
+    music = game.add.audio('music');
+    music.volume = 0.3;
+    music.loop = true;
+    music.play();
+    jump = game.add.audio('jump');
     
-    "use strict";
+    //Physics time!
+    game.physics.startSystem(Phaser.Physics.ARCADE);
+
+    //The background
+    //Side scrolling background
+    bgtile = game.add.tileSprite(0,0, 9999, 597, 'city');
     
-    var game = new Phaser.Game( 1000, 600, Phaser.AUTO, 'game', { preload: preload, create: create, update: update } );
+    var bg2 = game.add.sprite(1340,-10, 'street');
+   
+    //adding platforms and it's physics
+    platforms = game.add.group();
+    platforms.enableBody = true;
+   
+    var ground = platforms.create(0, game.world.height - 10, 'ground');
+
+    //Scale it to fit the game width and such
+    ground.scale.setTo(8,8);
+    ground.body.immovable = true;
     
-    function preload() {
-        // load sprites and backgrounds
-        game.load.image('sky', 'assets/sky.bmp');
-        game.load.spritesheet( 'ninja', 'assets/ninja.png', 489, 489);
-        game.load.image('dog', 'assets/Dog.png');
-        game.load.image('menu', 'assets/menu.png');
-        game.load.image('back', 'assets/background.png');
-        game.load.image('spike', 'assets/spike.png');
-        game.load.image('ball', 'assets/ball.png');
-        game.load.image('platform', 'assets/platform.png');
-        // music files
-        game.load.audio('titleMusic', 'assets/titleMusic.mp3');
-        game.load.audio('bgMusic', 'assets/bgMusic.mp3');
-        game.load.audio('runSFX', 'assets/runSFX.mp3');
-        game.load.audio('slideSFX', 'assets/slideSFX.mp3');
-        game.load.audio('jumpSFX', 'assets/jumpSFX.mp3');
-        game.load.audio('dieSFX', 'assets/dieSFX.mp3');
-        game.load.audio('winSFX', 'assets/winSFX.mp3');
-    }
-    // create variables
-    var bg;
-    var player;
-    var keys;
-    var jump;
-    var jumpTimer = 0;
-    var facingLeft = false;
-    var dog;
-    var menu;
-    var back;
-    var platforms;
-    var plat;
-    var spikes;
-    var spike;
-    var balls;
-    var ball;
-    var collidePlat;
-    var collideBall = false;
-    var collideSpike;
-    var dead = false;
-    var text;
-    var style;
-    var style2;
-    var i = 2000;
-    var win;
-    var titleMusic;
-    var bgMusic;
-    var runSFX;
-    var slideSFX;
-    var jumpSFX;
-    var dieSFX;
-    var winSFX;
-    var gameStart = true;
-    var hitbox;
-    var killCount;
-    var counter;
-    var playerHeight;
+    //Ledge time
+   // makePlatforms();
+    part1(platforms);
+
+    //Making them players
+ //   player = game.add.sprite(32, game.world.height - 150, 'dude');
+    player = game.add.sprite(32, game.world.height - 150, 'cat');
+    game.physics.arcade.enable(player);
+   
+    player.body.bounce.y = 0.2;
+    player.body.gravity.y  = 400;
+    player.body.collideWorldBounds = true;
     
-    function create() {
-    		// in the beginning to display controls
-        jump = game.input.keyboard.addKey(Phaser.Keyboard.SPACEBAR);
-        jump.onDown.add(exitMenu, this);
-    		// add sounds and music
-    		titleMusic = game.add.audio('titleMusic', 0.15, true);
-    		bgMusic = game.add.audio('bgMusic', 0.15, true);
-    		runSFX = game.add.audio('runSFX', 0.3);
-    		slideSFX = game.add.audio('slideSFX', 0.03);
-    		jumpSFX = game.add.audio('jumpSFX', 0.5);
-    		dieSFX = game.add.audio('dieSFX');
-    		winSFX = game.add.audio('winSFX');
-    		slideSFX.allowMultiple = true;
-        titleMusic.play();
-        // add sprites and turn on the arcade physics engine for this sprite.
-        bg = game.add.tileSprite(0, 0, 30000, 1600, 'sky');
-        back = game.add.tileSprite(0, 0, 30000, 1600, 'back');
-        player = game.add.sprite(15, 1000, 'ninja');
-        player.scale.setTo(0.2, 0.2);
-        game.physics.startSystem(Phaser.Physics.ARCADE);
-        game.physics.arcade.enable(player);
-        hitbox = player.body.width * 0.1;
-        playerHeight = player.body.height * 0.95;
-        game.world.sendToBack(bg);
-        dog = game.add.sprite(29800, 1330, 'dog');
-        dog.scale.setTo(0.4, 0.4);
-        game.physics.arcade.enable(dog);
-        
-        // add platforms and obstacles
-        platforms = game.add.group();
-        spikes = game.add.group();
-        balls = game.add.group();
-        platforms.enableBody = true;
-        spikes.enableBody = true;
-        balls.enableBody = true;
-        // dog's platform
-        plat = platforms.create(29700, 1370, 'platform');
-        plat.scale.setTo(2, 1);
-        plat.body.immovable = true;
-        
-        // base platforms, balls, spikes
-        var j = 300;
-        var k = 800;
-        var n, m;
-        // platform set 2
-        		plat = platforms.create(i, 1200, 'platform');
-        		plat.scale.setTo(10, .5);
-        		plat.body.immovable = true;
-        		ball = balls.create(i + j, 1050, 'ball');
-        		ball.scale.setTo(.7, .7);
-        		ball.body.immovable = true;
-        		ball = balls.create(i + k, 1070, 'ball');
-        		ball.scale.setTo(.5, .5);
-        		ball.body.immovable = true;
-        		ball = balls.create(i + k + 50, 1070, 'ball');
-        		ball.scale.setTo(.5, .5);
-        		ball.body.immovable = true;
-        i = 0, j = 600, k = 1200;
-        while (i < 30000) { // platform set 1
-        		plat = platforms.create(i, 1400, 'platform');
-        		plat.scale.setTo(16, .5);
-        		plat.body.immovable = true;
-        		spike = spikes.create(i + k, 1336, 'spike');
-        		spike.scale.setTo(.5, .5);
-        		spike.body.immovable = true;
-        		spike = spikes.create(i + j, 1336, 'spike');
-        		spike.scale.setTo(.5, .5);
-        		spike.body.immovable = true;
-        		spike = spikes.create(i + j + 80, 1336, 'spike');
-        		spike.scale.setTo(.5, .5);
-        		spike.body.immovable = true;
-        		n = j;
-        		j = k;
-        		k = n;
-        		i += 4500;
-        } i = 3900, j = 600, k = 1100;
-        while (i < 27600) { // platform set 3
-        		plat = platforms.create(i, 1000, 'platform');
-        		plat.scale.setTo(16.5, .5);
-        		plat.body.immovable = true;
-        		i += 3100;
-        } i = 3900, j = 600, k = 1170, m = 1670;
-        while (i < 27600) { // platform set 3 rotation 1 (2 balls, 1 spike)
-        		ball = balls.create(i + j, 850, 'ball');
-        		ball.scale.setTo(.7, .7);
-        		ball.body.immovable = true;
-        		ball = balls.create(i + j+10, 800, 'ball');
-        		ball.scale.setTo(.5, .5);
-        		ball.body.immovable = true;
-        		ball = balls.create(i + j+10, 750, 'ball');
-        		ball.scale.setTo(.5, .5);
-        		ball.body.immovable = true;
-        		spike = spikes.create(i + k, 936, 'spike');
-        		spike.scale.setTo(.5, .5);
-        		spike.body.immovable = true;
-        		spike = spikes.create(i + k + 40, 936, 'spike');
-        		spike.scale.setTo(.5, .5);
-        		spike.body.immovable = true;
-        		ball = balls.create(i + m, 870, 'ball');
-        		ball.scale.setTo(.5, .5);
-        		ball.body.immovable = true;
-        		n = j;
-        		j = k;
-        		k = m;
-        		m = n;
-        		i += 6200;
-        } i = 7000, j = 600, k = 1150, m = 1650;
-        while (i < 27600) { // platform set 3 rotation 2 (1 ball, 2 spikes)
-        		ball = balls.create(i + j, 850, 'ball');
-        		ball.scale.setTo(.7, .7);
-        		ball.body.immovable = true;
-        		spike = spikes.create(i + k, 936, 'spike');
-        		spike.scale.setTo(.5, .5);
-        		spike.body.immovable = true;
-        		spike = spikes.create(i + k + 40, 936, 'spike');
-        		spike.scale.setTo(.5, .5);
-        		spike.body.immovable = true;
-        		spike = spikes.create(i + m + 20, 936, 'spike');
-        		spike.scale.setTo(.5, .5);
-        		spike.body.immovable = true;
-        		n = m;
-        		m = k;
-        		k = j;
-        		j = n;
-        		i += 6200;
-        } i = 3250;
-        // staircase up
-        j = 0;
-        while (i > 0) {
-        		plat = platforms.create(i, 800 - j, 'platform');
-        		plat.scale.setTo(2, .7);
-        		plat.body.immovable = true;
-        		i -= 650;
-        		j += 50;
-        } // extra plat
-        plat = platforms.create(20, 400, 'platform');
-        plat.scale.setTo(2, .7);
-        plat.body.immovable = true;
-        i = 700, j = 0, k = 0;
-        // large plats, balls, and spikes
-        while (i < 28950) {
-        		plat = platforms.create(i, 350, 'platform');
-        		plat.scale.setTo(32.5, .5);
-        		plat.body.immovable = true;
-        		i += 5650
-        } // top platform rotation 1 (mirrors plat 3 rotation 2)
-        i = 700, j = 1200, k = 2200, m = 3200;
-        while (i < 28950) {
-        		ball = balls.create(i + j, 200, 'ball');
-        		ball.scale.setTo(.7, .7);
-        		ball.body.immovable = true;
-        		ball = balls.create(i + j+70, 200, 'ball');
-        		ball.scale.setTo(.7, .7);
-        		ball.body.immovable = true;
-        		spike = spikes.create(i + k, 286, 'spike');
-        		spike.scale.setTo(.5, .5);
-        		spike.body.immovable = true;
-        		spike = spikes.create(i + k + 40, 286, 'spike');
-        		spike.scale.setTo(.5, .5);
-        		spike.body.immovable = true;
-        		spike = spikes.create(i + m, 286, 'spike');
-        		spike.scale.setTo(.5, .5);
-        		spike.body.immovable = true;
-        		spike = spikes.create(i + m+80, 286, 'spike');
-        		spike.scale.setTo(.5, .5);
-        		spike.body.immovable = true;
-        		n = m;
-        		m = k;
-        		k = j;
-        		j = n;
-        		i += 11300;
-        } // top platform rotation 2 (2 balls, 1 spike)
-        i = 6800, j = 1200, k = 2200, m = 3200;
-        while (i < 28950) {
-        		ball = balls.create(i + j, 200, 'ball');
-        		ball.scale.setTo(.7, .7);
-        		ball.body.immovable = true;
-        		ball = balls.create(i + j, 136, 'ball');
-        		ball.scale.setTo(.7, .7);
-        		ball.body.immovable = true;
-        		spike = spikes.create(i + k, 286, 'spike');
-        		spike.scale.setTo(.5, .5);
-        		spike.body.immovable = true;
-        		spike = spikes.create(i + k + 40, 286, 'spike');
-        		spike.scale.setTo(.5, .5);
-        		spike.body.immovable = true;
-        		spike = spikes.create(i + k + 120, 286, 'spike');
-        		spike.scale.setTo(.5, .5);
-        		spike.body.immovable = true;
-        		ball = balls.create(i + m, 200, 'ball');
-        		ball.scale.setTo(.7, .7);
-        		ball.body.immovable = true;
-        		n = k;
-        		k = m;
-        		m = j;
-        		j = n;
-        		i += 11300;
-        }
-        // add animations
-        j = 10;
-        var arrayJump = [], arrayRun = [], arraySlide = [], arrayIdle = [], arrayDie = [];
-        while(j < 40) {
-        		if(j < 20)
-        				arrayDie.push(j);
-        		else if(j < 30)
-        				arrayIdle.push(j);
-        		else
-        				arrayJump.push(j);
-        		j++;
-        }
-        j = 60;
-        while(j < 80) {
-        		if(j < 70)
-        				arrayRun.push(j);
-        		else
-        				arraySlide.push(j);
-        		j++;
-        }  
-        player.animations.add('idle', arrayIdle, 20, true);
-        player.animations.add('jump', arrayJump, 15, true);
-        player.animations.add('run', arrayRun, 20, true);
-        player.animations.add('slide', arraySlide, 20, true);
-        player.animations.add('die', arrayDie);
-        player.anchor.setTo(.5, .5);
-        // set world bounds
-        game.world.setBounds(0, 0, 30000, 1600);
-        player.body.collideWorldBounds = true;
-        // death state text
-    		style = { font: "25px Verdana", fill: "#ff0000", align: "center" };
-    		style2 = { font: "25px Verdana", fill: "#ffff00", align: "center" };
-    		var style3 = {font: "25px Verdana", fill: "#ffffff", align: "top" };
-    		text = game.add.text(200, 200, "", style);
-    		text.fixedToCamera = true;
-    		killCount = game.add.text(game.camera.x + 20, game.camera.y + 20, "Retries: 0", style3);
-    		counter = 0;
-    		killCount.fixedToCamera = true;
-        menu = game.add.sprite(0, 0, 'menu');
-    		
-        i = 0;
-    }
-    function exitMenu() {
-    		if(gameStart) {
-    				player.body.gravity.y = 3200;
-    				keys = game.input.keyboard.createCursorKeys();
-    				menu.destroy();
-    				titleMusic.stop();
-    				bgMusic.play();
-    				game.camera.follow(player);
-    				gameStart = false;
-    		}
-    }
+    //Adding their animations
+	  player.animations.add('stand', [0,1], 10, true);
+    player.animations.add('left', [4, 5, 6, 7], 10, true);
+    player.animations.add('right', [8, 9, 10, 11], 10, true);
+   // player.animations.add('left', [0, 1, 2, 3], 10, true);
+   // player.animations.add('right', [5, 6, 7, 8], 10, true);
     
-    function update() {
-    		// hitbox correction
-    		player.body.width = hitbox;
-    		player.body.height = playerHeight;
-    // collision
-    		collidePlat = game.physics.arcade.collide(player, platforms);
-    		collideSpike = game.physics.arcade.overlap(player, spikes);
-    		win = game.physics.arcade.overlap(player, dog);
-    		if(collidePlat && keys.down.isDown && !(keys.left.isDown || keys.right.isDown) && player.body.velocity.x != 0)
-    				collideBall = false;
-    		else
-    				collideBall = game.physics.arcade.overlap(player, balls);
-    // win
-    if(win){
-    		text.setStyle(style2);
-    		text.setText("YOU WIN\nYou've caught Memory.");
-    		bgMusic.stop();
-    		winSFX.play('', 0, 0.2, false, false);
-    }
-    // death state
-    if(player.body.onFloor() || collideSpike || collideBall || dead) {
-    		if(!dead)
-    				dieSFX.play('', 0, 0.2, false, false);
-    		dead = true;
-        player.body.velocity.x = 0;
-        player.body.velocity.y = 0;
-        back.stopScroll();
-        bg.stopScroll();
-        text.setText("YOU DIED\nPress the up arrow key to restart.");
-    		player.animations.play('die', 20, false, true);
-    }
-    // controls
-    else if (!player.body.onFloor() && !collidePlat) { // if the player is not on the ground
-    		player.animations.play('jump');
-    }
-    else if (keys.left.isDown)
+    //Adding hearts
+    hearts = game.add.group();
+    hearts.enableBody = true;
+
+    game.time.events.repeat(Phaser.Timer.SECOND*2, 500, createHearts, this); 
+    
+
+    //Adding enmies
+    enemies = game.add.group();
+    //enemies.enableBody = true;
+    createEnemy();
+    
+    scoreText = game.add.text(16, 16, 'Hearts: '+ score, { fontSize: '32px', fill: '#000'});
+
+    
+
+   // player.anchor.setTo(0.5,0.5);
+    game.camera.follow(player);
+   game.time.events.loop(Phaser.Timer.SECOND, enemyMove, this); 
+}
+
+function update(){
+    //Constantly update them game physics doe
+    game.physics.arcade.collide(player, platforms);
+    game.physics.arcade.collide(hearts, platforms);
+    game.physics.arcade.collide(enemies, platforms);
+
+    //adding overlap to trigger functions when they overlap
+    game.physics.arcade.overlap(player, hearts, collectHearts, null, this);
+    game.physics.arcade.overlap(player, enemies, playerKill, null, this);
+    
+    player.body.velocity.x = 0;
+
+    if (game.input.keyboard.isDown(keys.LEFT))
     {
-    		if(!facingLeft) { // if the player is not facing left 
-    				player.scale.x *= -1; // flip the sprite
-    				facingLeft = true;
-    		}
-    		if (player.body.velocity.x > -700)
-    				player.body.velocity.x += -50;
-        player.animations.play('run');
-    		runSFX.play('', 0, 0.15, false, false);
-        back.autoScroll(5, 0);
-        bg.autoScroll(150, 0);
+	player.body.velocity.x = -175;
+	player.animations.play('left');
     }
-    else if (keys.right.isDown)
+    else if (game.input.keyboard.isDown(keys.RIGHT))
     {
-    		if(facingLeft) {
-    				player.scale.x *= -1;
-    				facingLeft = false;
-    		}
-    		if (player.body.velocity.x < 700)
-    				player.body.velocity.x += 50;
-        player.animations.play('run');
-    		runSFX.play('', 0, 0.15, false, false);
-        back.autoScroll(-5, 0); 
-        bg.autoScroll(-150, 0);
-    }
-    else if (keys.down.isDown && player.body.velocity.x != 0) { // sliding physics
-    		if(player.body.velocity.x > 0)
-    				player.body.velocity.x -= 10;
-    		else
-    				player.body.velocity.x += 10
-    		player.animations.play('slide');
-    		slideSFX.play('', 0.5, 0.04, false, false);
+	player.body.velocity.x = 175;
+	player.animations.play('right');
     }
     else
     {
-        player.body.velocity.x = 0;
-        back.stopScroll();
-        bg.stopScroll();
-        player.animations.play('idle');
+	player.body.velocity.x = 0;
+	player.animations.play('stand');
+	
+	player.frame = 6;
     }
-    // jumping
-    if (jump.isDown && collidePlat && !dead && game.time.now > jumpTimer)
+    
+    //Jump functions
+    if (game.input.keyboard.isDown(keys.UP) && player.body.touching.down)
     {
-    		titleMusic.stop();
-    		jumpSFX.play();
-        player.body.velocity.y = -1250;
-        jumpTimer = game.time.now + 500;
-    } 
-    // reset
-    if(!player.alive && keys.up.isDown) {
-    		dead = false;
-    		player.reset(15, 1000);
-    		text.setText("");
-    		counter++;
-    		killCount.setText("Retries: " + counter);
+	jump.volume = 0.5;
+	jump.play();
+	player.body.velocity.y = -425;
+
+
     }
+    
+    if(score == 20 && levelExist == false) 
+    {
+
+	part2(platforms);
+	levelExist = true;
     }
-};
+
+  /* enemies.forEach(function(enemy) {
+    var x = Math.round(Math.random());
+    if(x == 1)
+    {
+	if(enemy.body.touching.down)
+	{
+	    enemy.body.velocity.y = -400;
+	}
+	enemy.animations.play('left');
+	enemy.body.velocity.x = -150;
+	
+    }
+    if(x == 0)
+    {
+	if(enemy.body.touching.down)
+	{
+	    enemy.body.velocity.y = -400;
+	}
+	enemy.animations.play('right');
+	enemy.body.velocity.x = 150;
+    }
+   }, this);*///enemies.forEach(enemyMove,game.physics, false, 200);
+    updateScore(score);
+}
+
+function lockOnFollow() {
+    game.camera.follow(player, Phaser.Camera.FOLLOW_LOCKON);
+}
+
+function part1(platforms) {
+
+//    bgtile = game.add.tileSprite(0,0, 1340, 597, 'city');
+    game.world.setBounds(0,0, 9999, 597);
+
+    var ledge = platforms.create(350, 400, 'ground');
+    ledge.body.immovable = true;
+
+    ledge = platforms.create(650, 250, 'ground');
+    ledge.body.immovable = true;
+
+    ledge = platforms.create(200, 150, 'ground');
+    ledge.body.immovable = true;
+    
+
+}
+
+function part2(platforms) {
+
+    game.world.setBounds(0, 0, 2010, 597);
+    var ledge = platforms.create(1100, 225, 'ground');
+    ledge.body.immovable = true;
+
+    ledge = platforms.create(1400, 195, 'ground');
+    ledge.body.immovable = true;
+
+    ledge = platforms.create(1900, 350, 'ground');
+    ledge.body.immovable = true;
+}
+
+
+
+function randomHeight() {
+    var width = 800;
+    return Math.random()*(width - (game.world.height - 150) + 150);
+}
+
+function createHearts() {
+    var y = randomHeight();
+    var heart = hearts.create(game.world.randomX, y, 'heart');
+    heart.body.gravity.y = 400;
+    heart.body.bounce.y = 0.8;
+}
+
+//Sprites of enemies
+function createEnemy() {
+
+    for (var i=0; i<6; i++) {
+	enemy = enemies.create(game.world.randomX, game.rnd.integerInRange(100, 600), 'baddie');
+	game.physics.arcade.enable(enemy);
+	enemy.body.gravity.y = 400;
+	enemy.body.bounce.y = 0.2;
+	enemy.animations.add('left',[0,1],10,true);
+	enemy.animations.add('right',[2, 3], 10, true);
+	enemy.body.collideWorldBounds = true;
+	}
+}
+
+function playerKill(player, enemies) {
+
+    score-=1;
+    updateScore(parseInt(score));
+    if(score <= 0) 
+    {
+	//player.kill();
+	score = 0;
+	player.reset(32, game.world.height - 150);
+    }
+}
+
+function enemyMove ()
+    {
+	enemies.forEach(function(enemy) {
+    var x = Math.round(Math.random());
+    if(x == 1)
+    {
+	if(enemy.body.touching.down)
+	{
+	    enemy.body.velocity.y = -400;
+	}
+	enemy.animations.play('left');
+	enemy.body.velocity.x = -150;
+	
+    }
+	    if(x == 0)
+	    {
+	if(enemy.body.touching.down)
+	{
+	    enemy.body.velocity.y = -400;
+	}
+	enemy.animations.play('right');
+	enemy.body.velocity.x = 150;
+    }
+	}, this);
+    }
+
+
+
+function collectHearts(player, hearts) {
+    
+    hearts.kill();
+    score+= 1;
+    updateScore(parseInt(score));
+
+}
+
+
+
+function updateScore(score) {
+    scoreText.setText("Hearts: " + score);
+}
